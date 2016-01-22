@@ -11,6 +11,7 @@ public class OAuthServer {
     }
 
     public void startJetty() throws Exception {
+        PropertiesHolder.initialize();
         ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
         context.setContextPath("/");
         server.setHandler(context);

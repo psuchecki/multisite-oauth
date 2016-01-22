@@ -67,5 +67,11 @@
             <artifactId>evernote-api</artifactId>
             <version>1.25.1</version>
         </dependency>
+        <dependency>
+            <groupId>commons-configuration</groupId>
+            <artifactId>commons-configuration</artifactId>
+            <version>1.10</version>
+        </dependency>
+
     </dependencies>
 </project>

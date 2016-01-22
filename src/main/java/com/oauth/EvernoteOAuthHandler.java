@@ -22,27 +22,28 @@ import java.io.IOException;
 import java.util.List;
 
 public class EvernoteOAuthHandler implements OAuthHandler {
-
-    private static final String CONSUMER_KEY = "psuchecki";
-    private static final String CONSUMER_SECRET = "ef21a681f9e8465e";
-    private static final String CALLBACK = "http://localhost:8080/evernote-callback";
     private static final String VERIFIER_PARAM = "oauth_verifier";
+    private static final String EVERNOTE_SINGIN_PATH = "/evernote-singin";
+    private static final String EVERNOTE_CALLBACK_PATH = "/evernote-callback";
 
     private OAuthService service;
     private Token requestToken;
 
     @Override
     public void registerServletHandler(ServletContextHandler contextHandler) {
-        contextHandler.addServlet(new ServletHolder(new SigninServlet()), "/evernote-singin");
-        contextHandler.addServlet(new ServletHolder(new CallbackServlet()), "/evernote-callback");
+        contextHandler.addServlet(new ServletHolder(new SigninServlet()), EVERNOTE_SINGIN_PATH);
+        contextHandler.addServlet(new ServletHolder(new CallbackServlet()), EVERNOTE_CALLBACK_PATH);
     }
 
 
     private class SigninServlet extends HttpServlet {
         @Override
         protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-            service = new ServiceBuilder().provider(EvernoteApi.Sandbox.class).apiKey(CONSUMER_KEY)
-                    .apiSecret(CONSUMER_SECRET).callback(CALLBACK).build();
+            service = new ServiceBuilder()
+                    .provider(EvernoteApi.Sandbox.class)
+                    .apiKey(PropertiesHolder.getProperty("evernote.consumerkey"))
+                    .apiSecret(PropertiesHolder.getProperty("evernote.consumersecret"))
+                    .callback(PropertiesHolder.getProperty("appurl") + EVERNOTE_CALLBACK_PATH).build();
             requestToken = service.getRequestToken();
             String authorizationUrl = service.getAuthorizationUrl(requestToken);
 
