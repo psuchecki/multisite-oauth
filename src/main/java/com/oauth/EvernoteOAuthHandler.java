@@ -23,7 +23,7 @@ import java.util.List;
 
 public class EvernoteOAuthHandler implements OAuthHandler {
     private static final String VERIFIER_PARAM = "oauth_verifier";
-    private static final String EVERNOTE_SINGIN_PATH = "/evernote-singin";
+    private static final String EVERNOTE_SINGIN_PATH = "/evernote-signin";
     private static final String EVERNOTE_CALLBACK_PATH = "/evernote-callback";
 
     private OAuthService service;

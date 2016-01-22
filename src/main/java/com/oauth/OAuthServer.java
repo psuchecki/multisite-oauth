@@ -16,7 +16,7 @@ public class OAuthServer {
         context.setContextPath("/");
         server.setHandler(context);
 
-        new EvernoteOAuthHandler().registerServletHandler(context);
+        new OnedriveOAuthHandler().registerServletHandler(context);
 
         server.start();
         server.join();
