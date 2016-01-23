@@ -22,7 +22,7 @@ public class OAuthServer {
 
         List<OAuthHandler> oAuthHandlers =
                 Lists.newArrayList(new BoxOAuthHandler(), new OnedriveOAuthHandler(), new EvernoteOAuthHandler(),
-                        new SlackOAuthHandler());
+                        new SlackOAuthHandler(), new DropboxOAuthHandler());
 
         oAuthHandlers.stream().forEach(oAuthHandler -> oAuthHandler.registerServletHandler(context));
 

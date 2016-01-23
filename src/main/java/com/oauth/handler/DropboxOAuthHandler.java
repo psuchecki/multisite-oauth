@@ -1,25 +1,28 @@
 package com.oauth.handler;
 
-import com.box.sdk.BoxAPIConnection;
-import com.box.sdk.BoxFolder;
-import com.box.sdk.BoxItem;
 import com.github.scribejava.core.model.Token;
 import com.github.scribejava.core.model.Verifier;
 import com.github.scribejava.core.oauth.OAuthService;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
-import com.oauth.provider.BoxProvider;
+import com.oauth.provider.DropBoxProvider;
+import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.WebResource;
+import com.sun.jersey.core.util.MultivaluedMapImpl;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.MultivaluedMap;
 import java.io.IOException;
 import java.util.List;
 
-public class BoxOAuthHandler implements OAuthHandler {
-    private static final String APP_NAME = "box";
+public class DropboxOAuthHandler implements OAuthHandler {
+    private static final String APP_NAME = "dropbox";
 
     private OAuthService service;
 
@@ -29,18 +32,23 @@ public class BoxOAuthHandler implements OAuthHandler {
     }
 
     @Override
-    public List<BoxItem.Info> getSampleData(Token accessToken) {
-        BoxAPIConnection api = new BoxAPIConnection(accessToken.getToken());
-        BoxFolder rootFolder = BoxFolder.getRootFolder(api);
+    public List<String> getSampleData(Token accessToken) {
+        MultivaluedMap<String, String> queryParams = new MultivaluedMapImpl();
+        Client client = Client.create();
+        WebResource webResource = client.resource("https://content.dropboxapi.com/1/files/auto/Getting+Started.pdf");
+        queryParams.add("access_token", accessToken.getToken());
+        ClientResponse clientResponse =
+                webResource.queryParams(queryParams).accept(MediaType.APPLICATION_JSON).get(ClientResponse.class);
+        String response = clientResponse.getEntity(String.class);
 
-        return Lists.newArrayList(rootFolder);
+        return Lists.newArrayList(response);
     }
 
 
     private class SigninServlet extends HttpServlet {
         @Override
         protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-            service = OAuthServiceProvider.getInstance(APP_NAME, BoxProvider.class);
+            service = OAuthServiceProvider.getInstance(APP_NAME, DropBoxProvider.class);
             String authorizationUrl = service.getAuthorizationUrl(EMPTY_TOKEN);
 
             resp.sendRedirect(authorizationUrl);
@@ -59,14 +67,8 @@ public class BoxOAuthHandler implements OAuthHandler {
             Verifier verifier = new Verifier(verifierParam);
             Token accessToken = service.getAccessToken(EMPTY_TOKEN, verifier);
 
-            printSampleData(resp, accessToken);
+            resp.getWriter().println(getSampleData(accessToken));
         }
 
-        private void printSampleData(HttpServletResponse resp, Token accessToken) throws IOException {
-            List<BoxItem.Info> itemInfos = getSampleData(accessToken);
-            for (BoxItem.Info itemInfo : itemInfos) {
-                resp.getWriter().println(String.format("[%s] %s\n", itemInfo.getID(), itemInfo.getName()));
-            }
-        }
     }
 }

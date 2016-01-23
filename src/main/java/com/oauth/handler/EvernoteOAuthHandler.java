@@ -21,7 +21,7 @@ import java.util.List;
 
 public class EvernoteOAuthHandler implements OAuthHandler {
     private static final String VERIFIER_PARAM = "oauth_verifier";
-    public static final String APP_NAME = "evernote";
+    private static final String APP_NAME = "evernote";
 
     private OAuthService service;
     private Token requestToken;

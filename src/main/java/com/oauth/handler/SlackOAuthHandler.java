@@ -1,11 +1,11 @@
 package com.oauth.handler;
 
+import com.github.scribejava.apis.DropBoxApi;
 import com.github.scribejava.core.model.Token;
 import com.github.scribejava.core.model.Verifier;
 import com.github.scribejava.core.oauth.OAuthService;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
-import com.oauth.provider.SlackProvider;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
@@ -22,8 +22,6 @@ import java.io.IOException;
 import java.util.List;
 
 public class SlackOAuthHandler implements OAuthHandler {
-    private static final Token EMPTY_TOKEN = null;
-    private static final String CODE_PARAM = "code";
     public static final String APP_NAME = "slack";
 
     private OAuthService service;
@@ -50,7 +48,7 @@ public class SlackOAuthHandler implements OAuthHandler {
     private class SigninServlet extends HttpServlet {
         @Override
         protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-            service = OAuthServiceProvider.getInstance(APP_NAME, SlackProvider.class);
+            service = OAuthServiceProvider.getInstance(APP_NAME, DropBoxApi.class);
             String authorizationUrl = service.getAuthorizationUrl(EMPTY_TOKEN);
 
             resp.sendRedirect(authorizationUrl);

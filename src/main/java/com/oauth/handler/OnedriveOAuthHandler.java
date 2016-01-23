@@ -22,9 +22,7 @@ import java.io.IOException;
 import java.util.List;
 
 public class OnedriveOAuthHandler implements OAuthHandler {
-    private static final Token EMPTY_TOKEN = null;
-    private static final String CODE_PARAM = "code";
-    public static final String APP_NAME = "onedrive";
+    private static final String APP_NAME = "onedrive";
 
     private OAuthService service;
 
