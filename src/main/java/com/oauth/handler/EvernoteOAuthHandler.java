@@ -4,19 +4,29 @@ import com.evernote.auth.EvernoteAuth;
 import com.evernote.auth.EvernoteService;
 import com.evernote.clients.ClientFactory;
 import com.evernote.clients.NoteStoreClient;
+import com.evernote.edam.notestore.NoteFilter;
+import com.evernote.edam.notestore.NoteList;
+import com.evernote.edam.type.Note;
+import com.evernote.edam.type.NoteSortOrder;
 import com.evernote.edam.type.Notebook;
 import com.github.scribejava.apis.EvernoteApi;
 import com.github.scribejava.core.model.Token;
 import com.github.scribejava.core.model.Verifier;
 import com.github.scribejava.core.oauth.OAuthService;
 import com.google.common.base.Strings;
+import com.google.common.collect.Lists;
+import com.google.gson.Gson;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.BufferedWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
 public class EvernoteOAuthHandler implements OAuthHandler {
@@ -35,7 +45,7 @@ public class EvernoteOAuthHandler implements OAuthHandler {
     private class SigninServlet extends HttpServlet {
         @Override
         protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-            service = OAuthServiceProvider.getInstance(APP_NAME, EvernoteApi.class);
+            service = OAuthServiceProvider.getInstance(APP_NAME, EvernoteApi.Sandbox.class);
             requestToken = service.getRequestToken();
             String authorizationUrl = service.getAuthorizationUrl(requestToken);
 
@@ -60,9 +70,9 @@ public class EvernoteOAuthHandler implements OAuthHandler {
 
         private void printSampleData(HttpServletResponse resp, Token accessToken) throws IOException {
             try {
-                List<Notebook> notebooks = getSampleData(accessToken);
-                for (Notebook notebook : notebooks) {
-                    resp.getWriter().println(notebook);
+                List<Note> notes = getSampleData(accessToken);
+                for (Note note : notes) {
+                    resp.getWriter().println(note);
                 }
             } catch (Exception e) {
                 resp.getWriter().println(e);
@@ -71,10 +81,29 @@ public class EvernoteOAuthHandler implements OAuthHandler {
     }
 
     @Override
-    public List<Notebook> getSampleData(Token accessToken) throws Exception {
-        EvernoteAuth evernoteAuth = new EvernoteAuth(EvernoteService.PRODUCTION, accessToken.getToken());
+    public List<Note> getSampleData(Token accessToken) throws Exception {
+        List<Note> userNotes = Lists.newArrayList();
+        EvernoteAuth evernoteAuth = new EvernoteAuth(EvernoteService.SANDBOX, accessToken.getToken());
         NoteStoreClient noteStoreClient = new ClientFactory(evernoteAuth).createNoteStoreClient();
 
-        return noteStoreClient.listNotebooks();
+        for (Notebook notebook : noteStoreClient.listNotebooks()) {
+            NoteFilter filter = new NoteFilter();
+            filter.setNotebookGuid(notebook.getGuid());
+            filter.setOrder(NoteSortOrder.CREATED.getValue());
+            filter.setAscending(true);
+            NoteList notes = noteStoreClient.findNotes(filter, 0, Integer.MAX_VALUE);
+            userNotes.addAll(notes.getNotes());
+            Path path = Paths.get(String.format("target/%s/%s.txt",APP_NAME, notebook.getGuid()));
+            Files.createDirectories(path.getParent());
+            Files.deleteIfExists(path);
+            Files.createFile(path);
+            try (BufferedWriter writer = Files.newBufferedWriter(path)) {
+                Gson gson = new Gson();
+                writer.write(gson.toJson(notes.getNotes()));
+                writer.close();
+            }
+        }
+        
+        return userNotes;
     }
 }
