@@ -1,5 +1,8 @@
 package com.oauth;
 
+import com.oauth.handler.BoxOAuthHandler;
+import com.oauth.handler.EvernoteOAuthHandler;
+import com.oauth.handler.OnedriveOAuthHandler;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 
@@ -16,7 +19,9 @@ public class OAuthServer {
         context.setContextPath("/");
         server.setHandler(context);
 
+        new BoxOAuthHandler().registerServletHandler(context);
         new OnedriveOAuthHandler().registerServletHandler(context);
+        new EvernoteOAuthHandler().registerServletHandler(context);
 
         server.start();
         server.join();

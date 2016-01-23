@@ -1,4 +1,4 @@
-package com.oauth;
+package com.oauth.handler;
 
 import com.github.scribejava.core.model.Token;
 import org.eclipse.jetty.servlet.ServletContextHandler;

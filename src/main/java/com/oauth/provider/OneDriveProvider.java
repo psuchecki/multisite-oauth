@@ -1,12 +1,14 @@
-package com.oauth;
+package com.oauth.provider;
 
 import com.github.scribejava.apis.google.GoogleJsonTokenExtractor;
 import com.github.scribejava.apis.service.GoogleOAuthServiceImpl;
 import com.github.scribejava.core.builder.api.DefaultApi20;
 import com.github.scribejava.core.extractors.AccessTokenExtractor;
 import com.github.scribejava.core.model.OAuthConfig;
+import com.github.scribejava.core.model.Verb;
 import com.github.scribejava.core.oauth.OAuthService;
 import com.github.scribejava.core.utils.OAuthEncoder;
+import com.oauth.PropertiesHolder;
 
 public class OneDriveProvider extends DefaultApi20 {
 
@@ -21,8 +23,13 @@ public class OneDriveProvider extends DefaultApi20 {
 
     @Override
     public String getAuthorizationUrl(OAuthConfig config) {
-        return String.format(AUTHORIZE_URL, new Object[]{config.getApiKey(), OAuthEncoder.encode(config.getScope()),
-                OAuthEncoder.encode(config.getCallback())});
+        return String.format(AUTHORIZE_URL,
+                new Object[]{config.getApiKey(), PropertiesHolder.getProperty("onedrive.scope"),
+                        OAuthEncoder.encode(config.getCallback())});
+    }
+
+    public Verb getAccessTokenVerb() {
+        return Verb.POST;
     }
 
     public AccessTokenExtractor getAccessTokenExtractor() {
