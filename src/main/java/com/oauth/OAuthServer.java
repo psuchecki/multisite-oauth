@@ -1,10 +1,11 @@
 package com.oauth;
 
-import com.oauth.handler.BoxOAuthHandler;
-import com.oauth.handler.EvernoteOAuthHandler;
-import com.oauth.handler.OnedriveOAuthHandler;
+import com.google.common.collect.Lists;
+import com.oauth.handler.*;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
+
+import java.util.List;
 
 public class OAuthServer {
     private Server server = new Server(8080);
@@ -19,9 +20,11 @@ public class OAuthServer {
         context.setContextPath("/");
         server.setHandler(context);
 
-        new BoxOAuthHandler().registerServletHandler(context);
-        new OnedriveOAuthHandler().registerServletHandler(context);
-        new EvernoteOAuthHandler().registerServletHandler(context);
+        List<OAuthHandler> oAuthHandlers =
+                Lists.newArrayList(new BoxOAuthHandler(), new OnedriveOAuthHandler(), new EvernoteOAuthHandler(),
+                        new SlackOAuthHandler());
+
+        oAuthHandlers.stream().forEach(oAuthHandler -> oAuthHandler.registerServletHandler(context));
 
         server.start();
         server.join();
