@@ -5,6 +5,7 @@ import com.github.scribejava.core.model.Verifier;
 import com.github.scribejava.core.oauth.OAuthService;
 import com.google.common.base.Strings;
 import com.oauth.client.OnedriveFileDownloader;
+import com.oauth.provider.OAuthServiceProvider;
 import com.oauth.provider.OneDriveProvider;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 

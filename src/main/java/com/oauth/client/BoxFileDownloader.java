@@ -8,7 +8,7 @@ import com.github.scribejava.core.model.Token;
 import com.github.scribejava.core.oauth.OAuthService;
 import com.google.common.collect.Lists;
 import com.oauth.handler.BoxOAuthHandler;
-import com.oauth.handler.OAuthServiceProvider;
+import com.oauth.provider.OAuthServiceProvider;
 
 import java.io.FileOutputStream;
 import java.io.IOException;

@@ -6,6 +6,7 @@ import com.github.scribejava.core.oauth.OAuthService;
 import com.google.common.base.Strings;
 import com.oauth.client.BoxFileDownloader;
 import com.oauth.provider.BoxProvider;
+import com.oauth.provider.OAuthServiceProvider;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 
 import javax.servlet.ServletException;

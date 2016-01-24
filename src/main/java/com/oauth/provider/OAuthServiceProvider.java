@@ -1,4 +1,4 @@
-package com.oauth.handler;
+package com.oauth.provider;
 
 import com.github.scribejava.core.builder.ServiceBuilder;
 import com.github.scribejava.core.builder.api.Api;
