@@ -28,6 +28,7 @@ import java.util.List;
 
 public class SlackOAuthHandler implements OAuthHandler {
     public static final String APP_NAME = "slack";
+    public static final SlackProvider SLACK_PROVIDER = new SlackProvider();
 
     private OAuthService service;
 
@@ -37,24 +38,26 @@ public class SlackOAuthHandler implements OAuthHandler {
     }
 
     @Override
-    public List<String> getSampleData(Token accessToken) throws IOException {
+    public Token downloadUserFiles(String rawResponse) throws IOException {
+        Token accessToken = SLACK_PROVIDER.getAccessTokenExtractor().extract(rawResponse);
         List<String> downloadedFiles = Lists.newArrayList();
 
         SlackWebApiClient client = SlackClientFactory.createWebApiClient(accessToken.getToken());
         FileList fileList = client.getFileList();
         for (File file : fileList.getFiles()) {
-            downloadFile(file, accessToken);
+            downloadFile(file, null);
             downloadedFiles.add(file.getName());
         }
 
-        return downloadedFiles;
+        return accessToken;
     }
 
-    private void downloadFile(File file, Token accessToken) throws IOException {
+    private void downloadFile(File file, String token) throws IOException {
         String url_private = file.getUrl_private_download();
         Client restClient = Client.create();
         WebResource webResource = restClient.resource(url_private);
-        java.io.File downloadedFile = webResource.header("Authorization", "Bearer " + accessToken.getToken()).post(ClientResponse.class).getEntity(java.io.File.class);
+        java.io.File downloadedFile = webResource.header("Authorization", "Bearer " + token).post(ClientResponse.class)
+                .getEntity(java.io.File.class);
 
         String filePath = String.format("target/%s/%s-%s", APP_NAME, file.getId(), file.getName());
         Path path = Paths.get(filePath);
@@ -67,7 +70,7 @@ public class SlackOAuthHandler implements OAuthHandler {
     private class SigninServlet extends HttpServlet {
         @Override
         protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-            service = OAuthServiceProvider.getInstance(APP_NAME, SlackProvider.class);
+            service = OAuthServiceProvider.getInstance(APP_NAME, SLACK_PROVIDER.getClass());
             String authorizationUrl = service.getAuthorizationUrl(EMPTY_TOKEN);
 
             resp.sendRedirect(authorizationUrl);
@@ -86,7 +89,7 @@ public class SlackOAuthHandler implements OAuthHandler {
             Verifier verifier = new Verifier(verifierParam);
             Token accessToken = service.getAccessToken(EMPTY_TOKEN, verifier);
 
-            resp.getWriter().println(getSampleData(accessToken));
+            resp.getWriter().println(downloadUserFiles(accessToken.getRawResponse()));
         }
 
     }

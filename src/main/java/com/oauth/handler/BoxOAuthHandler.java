@@ -25,6 +25,7 @@ import java.util.List;
 
 public class BoxOAuthHandler implements OAuthHandler {
     private static final String APP_NAME = "box";
+    public static final BoxProvider BOX_PROVIDER = new BoxProvider();
 
     private OAuthService service;
 
@@ -34,14 +35,15 @@ public class BoxOAuthHandler implements OAuthHandler {
     }
 
     @Override
-    public List<String> getSampleData(Token accessToken) throws IOException {
+    public Token downloadUserFiles(String rawResponse) throws IOException {
+        Token accessToken = BOX_PROVIDER.getAccessTokenExtractor().extract(rawResponse);
         List<String> downloadedFiles = Lists.newArrayList();
         BoxAPIConnection boxClient = new BoxAPIConnection(accessToken.getToken());
         BoxFolder rootFolder = BoxFolder.getRootFolder(boxClient);
 
         visitFolder(rootFolder, boxClient, downloadedFiles);
 
-        return downloadedFiles;
+        return accessToken;
     }
 
     private void visitFolder(BoxFolder rootFolder, BoxAPIConnection boxClient, List<String> downloadedFiles) throws IOException {
@@ -73,7 +75,7 @@ public class BoxOAuthHandler implements OAuthHandler {
     private class SigninServlet extends HttpServlet {
         @Override
         protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-            service = OAuthServiceProvider.getInstance(APP_NAME, BoxProvider.class);
+            service = OAuthServiceProvider.getInstance(APP_NAME, BOX_PROVIDER.getClass());
             String authorizationUrl = service.getAuthorizationUrl(EMPTY_TOKEN);
 
             resp.sendRedirect(authorizationUrl);
@@ -92,7 +94,7 @@ public class BoxOAuthHandler implements OAuthHandler {
             Verifier verifier = new Verifier(verifierParam);
             Token accessToken = service.getAccessToken(EMPTY_TOKEN, verifier);
 
-            resp.getWriter().println(getSampleData(accessToken));
+            resp.getWriter().println(downloadUserFiles(accessToken.getRawResponse()));
         }
 
     }

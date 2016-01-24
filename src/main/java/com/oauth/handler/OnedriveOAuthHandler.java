@@ -1,5 +1,8 @@
 package com.oauth.handler;
 
+import com.github.scribejava.core.extractors.JsonTokenExtractor;
+import com.github.scribejava.core.model.OAuthRequest;
+import com.github.scribejava.core.model.Response;
 import com.github.scribejava.core.model.Token;
 import com.github.scribejava.core.model.Verifier;
 import com.github.scribejava.core.oauth.OAuthService;
@@ -30,6 +33,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 
+import static com.github.scribejava.core.model.Verb.POST;
+
 public class OnedriveOAuthHandler implements OAuthHandler {
     private static final String APP_NAME = "onedrive";
     public static final String FILE_DOWNLOAD_PATH =
@@ -38,6 +43,7 @@ public class OnedriveOAuthHandler implements OAuthHandler {
             "https://api.onedrive.com/v1.0/drive/items/%s/children?select=id,folder,name";
     public static final String ROOT_FOLDER_DOWNLOAD_PATH =
             "https://api.onedrive.com/v1.0/drive/root/children?select=id,folder,name";
+    public static final OneDriveProvider ONE_DRIVE_PROVIDER = new OneDriveProvider();
 
     private OAuthService service;
 
@@ -49,7 +55,7 @@ public class OnedriveOAuthHandler implements OAuthHandler {
     private class SigninServlet extends HttpServlet {
         @Override
         protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-            service = OAuthServiceProvider.getInstance(APP_NAME, OneDriveProvider.class);
+            service = OAuthServiceProvider.getInstance(APP_NAME, ONE_DRIVE_PROVIDER.getClass());
             String authorizationUrl = service.getAuthorizationUrl(EMPTY_TOKEN);
 
             resp.sendRedirect(authorizationUrl);
@@ -68,23 +74,38 @@ public class OnedriveOAuthHandler implements OAuthHandler {
             Verifier verifier = new Verifier(verifierParam);
             Token accessToken = service.getAccessToken(EMPTY_TOKEN, verifier);
 
-            resp.getWriter().println(getSampleData(accessToken));
+            resp.getWriter().println(downloadUserFiles(accessToken.getRawResponse()));
         }
     }
 
     @Override
-    public List<String> getSampleData(Token accessToken) throws IOException {
+    public Token downloadUserFiles(String rawResponse) throws IOException {
+        Token accessToken = ONE_DRIVE_PROVIDER.getAccessTokenExtractor().extract(rawResponse);
+        Token refreshedToken = refreshAccessToken(accessToken);
+
         List<String> downloadedFiles = Lists.newArrayList();
         MultivaluedMap<String, String> queryParams = new MultivaluedMapImpl();
         Client client = Client.create();
         WebResource webResource = client.resource(ROOT_FOLDER_DOWNLOAD_PATH);
-        queryParams.add("access_token", accessToken.getToken());
+        queryParams.add("access_token", refreshedToken.getToken());
         ClientResponse clientResponse =
                 webResource.queryParams(queryParams).accept(MediaType.APPLICATION_JSON).get(ClientResponse.class);
         String rootFolderInfo = clientResponse.getEntity(String.class);
         handleFolder(client, queryParams, rootFolderInfo, downloadedFiles);
 
-        return downloadedFiles;
+        return refreshedToken;
+    }
+
+    private Token refreshAccessToken(Token accessToken) {
+        JsonObject rawReponseJson = new JsonParser().parse(accessToken.getRawResponse()).getAsJsonObject();
+        String refresh_token = rawReponseJson.get("refresh_token").getAsString();
+        OAuthRequest request = new OAuthRequest(POST, OneDriveProvider.ACCESS_TOKEN_ENDPOINT , service);
+        request.addBodyParameter("grant_type", "refresh_token");
+        request.addBodyParameter("refresh_token", refresh_token);
+        request.addBodyParameter("client_id", service.getConfig().getApiKey());
+        request.addBodyParameter("client_secret", service.getConfig().getApiSecret());
+        Response response = request.send();
+        return new JsonTokenExtractor().extract(response.getBody());
     }
 
     private void handleFolder(Client client, MultivaluedMap<String, String> queryParams, String folderInfo,

@@ -1,9 +1,9 @@
 package com.oauth.provider;
 
-import com.github.scribejava.apis.google.GoogleJsonTokenExtractor;
 import com.github.scribejava.apis.service.GoogleOAuthServiceImpl;
 import com.github.scribejava.core.builder.api.DefaultApi20;
 import com.github.scribejava.core.extractors.AccessTokenExtractor;
+import com.github.scribejava.core.extractors.JsonTokenExtractor;
 import com.github.scribejava.core.model.OAuthConfig;
 import com.github.scribejava.core.model.Verb;
 import com.github.scribejava.core.oauth.OAuthService;
@@ -30,7 +30,7 @@ public class BoxProvider extends DefaultApi20 {
     }
 
     public AccessTokenExtractor getAccessTokenExtractor() {
-        return new GoogleJsonTokenExtractor();
+        return new JsonTokenExtractor();
     }
 
     public OAuthService createService(OAuthConfig config) {

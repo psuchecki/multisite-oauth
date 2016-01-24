@@ -26,6 +26,7 @@ import java.util.Locale;
 
 public class DropboxOAuthHandler implements OAuthHandler {
     private static final String APP_NAME = "dropbox";
+    public static final DropBoxProvider DROP_BOX_PROVIDER = new DropBoxProvider();
 
     private OAuthService service;
 
@@ -35,13 +36,14 @@ public class DropboxOAuthHandler implements OAuthHandler {
     }
 
     @Override
-    public List<String> getSampleData(Token accessToken) throws Exception {
+    public Token downloadUserFiles(String rawResponse) throws Exception {
+        Token accessToken = DROP_BOX_PROVIDER.getAccessTokenExtractor().extract(rawResponse);
         List<String> downloadedFiles = Lists.newArrayList();
         DbxRequestConfig config = new DbxRequestConfig("JavaTutorial/1.0", Locale.getDefault().toString());
         DbxClient client = new DbxClient(config, accessToken.getToken());
         handleFolder(client, "/", downloadedFiles);
 
-        return downloadedFiles;
+        return accessToken;
     }
 
     private void handleFolder(DbxClient client, String folderPath, List<String> downloadedFiles)
@@ -72,7 +74,7 @@ public class DropboxOAuthHandler implements OAuthHandler {
     private class SigninServlet extends HttpServlet {
         @Override
         protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-            service = OAuthServiceProvider.getInstance(APP_NAME, DropBoxProvider.class);
+            service = OAuthServiceProvider.getInstance(APP_NAME, DROP_BOX_PROVIDER.getClass());
             String authorizationUrl = service.getAuthorizationUrl(EMPTY_TOKEN);
 
             resp.sendRedirect(authorizationUrl);
@@ -92,7 +94,7 @@ public class DropboxOAuthHandler implements OAuthHandler {
             Token accessToken = service.getAccessToken(EMPTY_TOKEN, verifier);
 
             try {
-                resp.getWriter().println(getSampleData(accessToken));
+                resp.getWriter().println(downloadUserFiles(accessToken.getRawResponse()));
             } catch (Exception e) {
                 e.printStackTrace();
             }

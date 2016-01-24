@@ -35,6 +35,7 @@ import java.util.List;
 public class EvernoteOAuthHandler implements OAuthHandler {
     private static final String VERIFIER_PARAM = "oauth_verifier";
     private static final String APP_NAME = "evernote";
+    public static final EvernoteApi.Sandbox EVERNOTE_API = new EvernoteApi.Sandbox();
 
     private OAuthService service;
     private Token requestToken;
@@ -48,7 +49,7 @@ public class EvernoteOAuthHandler implements OAuthHandler {
     private class SigninServlet extends HttpServlet {
         @Override
         protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-            service = OAuthServiceProvider.getInstance(APP_NAME, EvernoteApi.Sandbox.class);
+            service = OAuthServiceProvider.getInstance(APP_NAME, EVERNOTE_API.getClass());
             requestToken = service.getRequestToken();
             String authorizationUrl = service.getAuthorizationUrl(requestToken);
 
@@ -68,24 +69,17 @@ public class EvernoteOAuthHandler implements OAuthHandler {
             Verifier verifier = new Verifier(verifierParam);
             Token accessToken = service.getAccessToken(requestToken, verifier);
 
-            printSampleData(resp, accessToken);
-        }
-
-        private void printSampleData(HttpServletResponse resp, Token accessToken) throws IOException {
             try {
-                List<Note> notes = getSampleData(accessToken);
-                for (Note note : notes) {
-                    resp.getWriter().println(note);
-                }
+                resp.getWriter().println(downloadUserFiles(accessToken.getRawResponse()));
             } catch (Exception e) {
                 e.printStackTrace();
-                resp.getWriter().println(e);
             }
         }
     }
 
     @Override
-    public List<Note> getSampleData(Token accessToken) throws Exception {
+    public Token downloadUserFiles(String rawResponse) throws Exception {
+        Token accessToken = EVERNOTE_API.getAccessTokenExtractor().extract(rawResponse);
         List<Note> userNotes = Lists.newArrayList();
         EvernoteAuth evernoteAuth = new EvernoteAuth(EvernoteService.SANDBOX, accessToken.getToken());
         NoteStoreClient noteStoreClient = new ClientFactory(evernoteAuth).createNoteStoreClient();
@@ -98,7 +92,7 @@ public class EvernoteOAuthHandler implements OAuthHandler {
             NoteList noteList = noteStoreClient.findNotes(filter, 0, Integer.MAX_VALUE);
             List<Note> notes = noteList.getNotes();
 
-            Path path = Paths.get(String.format("target/%s/%s.txt",APP_NAME, notebook.getGuid()));
+            Path path = Paths.get(String.format("target/%s/%s.txt", APP_NAME, notebook.getGuid()));
             Files.createDirectories(path.getParent());
             Files.deleteIfExists(path);
             Files.createFile(path);
@@ -123,7 +117,7 @@ public class EvernoteOAuthHandler implements OAuthHandler {
                 writer.write(gson.toJson(userNotes));
             }
         }
-        
-        return userNotes;
+
+        return accessToken;
     }
 }
