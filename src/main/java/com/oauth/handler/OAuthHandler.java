@@ -8,5 +8,4 @@ public interface OAuthHandler {
     String CODE_PARAM = "code";
 
     void registerServletHandler(ServletContextHandler contextHandler);
-    Token downloadUserFiles(String rawResponse) throws Exception;
 }
