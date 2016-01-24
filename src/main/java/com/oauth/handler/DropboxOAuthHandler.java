@@ -1,25 +1,28 @@
 package com.oauth.handler;
 
+import com.dropbox.core.DbxClient;
+import com.dropbox.core.DbxEntry;
+import com.dropbox.core.DbxException;
+import com.dropbox.core.DbxRequestConfig;
 import com.github.scribejava.core.model.Token;
 import com.github.scribejava.core.model.Verifier;
 import com.github.scribejava.core.oauth.OAuthService;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.oauth.provider.DropBoxProvider;
-import com.sun.jersey.api.client.Client;
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.WebResource;
-import com.sun.jersey.core.util.MultivaluedMapImpl;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.MultivaluedMap;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.Locale;
 
 public class DropboxOAuthHandler implements OAuthHandler {
     private static final String APP_NAME = "dropbox";
@@ -32,16 +35,37 @@ public class DropboxOAuthHandler implements OAuthHandler {
     }
 
     @Override
-    public List<String> getSampleData(Token accessToken) {
-        MultivaluedMap<String, String> queryParams = new MultivaluedMapImpl();
-        Client client = Client.create();
-        WebResource webResource = client.resource("https://content.dropboxapi.com/1/files/auto/Getting+Started.pdf");
-        queryParams.add("access_token", accessToken.getToken());
-        ClientResponse clientResponse =
-                webResource.queryParams(queryParams).accept(MediaType.APPLICATION_JSON).get(ClientResponse.class);
-        String response = clientResponse.getEntity(String.class);
+    public List<String> getSampleData(Token accessToken) throws Exception {
+        List<String> downloadedFiles = Lists.newArrayList();
+        DbxRequestConfig config = new DbxRequestConfig("JavaTutorial/1.0", Locale.getDefault().toString());
+        DbxClient client = new DbxClient(config, accessToken.getToken());
+        handleFolder(client, "/", downloadedFiles);
 
-        return Lists.newArrayList(response);
+        return downloadedFiles;
+    }
+
+    private void handleFolder(DbxClient client, String folderPath, List<String> downloadedFiles)
+            throws DbxException, IOException {
+        DbxEntry.WithChildren listing = client.getMetadataWithChildren(folderPath);
+        for (DbxEntry child : listing.children) {
+            if (child.isFile()) {
+                handleFile(client, child, downloadedFiles);
+            } else if (child.isFolder()) {
+                handleFolder(client, child.path, downloadedFiles);
+            }
+        }
+    }
+
+    private void handleFile(DbxClient client, DbxEntry file, List<String> downloadedFiles)
+            throws IOException, DbxException {
+        String filePath = String.format("target/%s%s", APP_NAME, file.path);
+        Path path = Paths.get(filePath);
+        Files.createDirectories(path.getParent());
+        Files.deleteIfExists(path);
+        try (FileOutputStream outputStream = new FileOutputStream(filePath)) {
+            DbxEntry.File downloadedFile = client.getFile(file.path, ((DbxEntry.File) file).rev, outputStream);
+            downloadedFiles.add(downloadedFile.path);
+        }
     }
 
 
@@ -67,7 +91,11 @@ public class DropboxOAuthHandler implements OAuthHandler {
             Verifier verifier = new Verifier(verifierParam);
             Token accessToken = service.getAccessToken(EMPTY_TOKEN, verifier);
 
-            resp.getWriter().println(getSampleData(accessToken));
+            try {
+                resp.getWriter().println(getSampleData(accessToken));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
 
     }

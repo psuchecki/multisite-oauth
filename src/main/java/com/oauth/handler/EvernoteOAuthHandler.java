@@ -121,7 +121,6 @@ public class EvernoteOAuthHandler implements OAuthHandler {
             try (BufferedWriter writer = Files.newBufferedWriter(path)) {
                 Gson gson = new Gson();
                 writer.write(gson.toJson(userNotes));
-                writer.close();
             }
         }
         
