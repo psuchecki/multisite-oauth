@@ -12,6 +12,23 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
+    <repositories>
+        <repository>
+            <id>central</id>
+            <name>Maven Repository Switchboard</name>
+            <layout>default</layout>
+            <url>http://repo1.maven.org/maven2</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+        </repository>
+    </repositories>
+
+
     <build>
         <plugins>
             <plugin>
@@ -36,11 +53,6 @@
             <groupId>org.eclipse.jetty</groupId>
             <artifactId>jetty-servlet</artifactId>
             <version>8.1.8.v20121106</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpclient</artifactId>
-            <version>4.2.1</version>
         </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>
@@ -97,5 +109,11 @@
             <artifactId>dropbox-core-sdk</artifactId>
             <version>1.8.2</version>
         </dependency>
+        <dependency>
+            <groupId>com.github.flowctrl</groupId>
+            <artifactId>slack-api</artifactId>
+            <version>v1.0.12.RELEASE</version>
+        </dependency>
+
     </dependencies>
 </project>

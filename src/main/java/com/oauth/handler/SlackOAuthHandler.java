@@ -1,24 +1,29 @@
 package com.oauth.handler;
 
-import com.github.scribejava.apis.DropBoxApi;
 import com.github.scribejava.core.model.Token;
 import com.github.scribejava.core.model.Verifier;
 import com.github.scribejava.core.oauth.OAuthService;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
+import com.oauth.provider.SlackProvider;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
-import com.sun.jersey.core.util.MultivaluedMapImpl;
+import flowctrl.integration.slack.SlackClientFactory;
+import flowctrl.integration.slack.type.File;
+import flowctrl.integration.slack.type.FileList;
+import flowctrl.integration.slack.webapi.SlackWebApiClient;
+import org.apache.commons.io.FileUtils;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.MultivaluedMap;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
 public class SlackOAuthHandler implements OAuthHandler {
@@ -32,23 +37,37 @@ public class SlackOAuthHandler implements OAuthHandler {
     }
 
     @Override
-    public List<String> getSampleData(Token accessToken) {
-        MultivaluedMap<String, String> queryParams = new MultivaluedMapImpl();
-        Client client = Client.create();
-        WebResource webResource = client.resource("https://slack.com/api/files.list");
-        queryParams.add("token", accessToken.getToken());
-        ClientResponse clientResponse =
-                webResource.queryParams(queryParams).accept(MediaType.APPLICATION_JSON).get(ClientResponse.class);
-        String response = clientResponse.getEntity(String.class);
+    public List<String> getSampleData(Token accessToken) throws IOException {
+        List<String> downloadedFiles = Lists.newArrayList();
 
-        return Lists.newArrayList(response);
+        SlackWebApiClient client = SlackClientFactory.createWebApiClient(accessToken.getToken());
+        FileList fileList = client.getFileList();
+        for (File file : fileList.getFiles()) {
+            downloadFile(file, accessToken);
+            downloadedFiles.add(file.getName());
+        }
+
+        return downloadedFiles;
+    }
+
+    private void downloadFile(File file, Token accessToken) throws IOException {
+        String url_private = file.getUrl_private_download();
+        Client restClient = Client.create();
+        WebResource webResource = restClient.resource(url_private);
+        java.io.File downloadedFile = webResource.header("Authorization", "Bearer " + accessToken.getToken()).post(ClientResponse.class).getEntity(java.io.File.class);
+
+        String filePath = String.format("target/%s/%s-%s", APP_NAME, file.getId(), file.getName());
+        Path path = Paths.get(filePath);
+        Files.createDirectories(path.getParent());
+        Files.deleteIfExists(path);
+        FileUtils.moveFile(downloadedFile, new java.io.File(filePath));
     }
 
 
     private class SigninServlet extends HttpServlet {
         @Override
         protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-            service = OAuthServiceProvider.getInstance(APP_NAME, DropBoxApi.class);
+            service = OAuthServiceProvider.getInstance(APP_NAME, SlackProvider.class);
             String authorizationUrl = service.getAuthorizationUrl(EMPTY_TOKEN);
 
             resp.sendRedirect(authorizationUrl);
