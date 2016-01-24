@@ -9,6 +9,7 @@ import com.github.scribejava.core.model.Verifier;
 import com.github.scribejava.core.oauth.OAuthService;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
+import com.oauth.client.TokenRefresher;
 import com.oauth.provider.BoxProvider;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 
@@ -37,13 +38,14 @@ public class BoxOAuthHandler implements OAuthHandler {
     @Override
     public Token downloadUserFiles(String rawResponse) throws IOException {
         Token accessToken = BOX_PROVIDER.getAccessTokenExtractor().extract(rawResponse);
+        Token refreshedAccessToken = new TokenRefresher().refreshAccessToken(accessToken, BOX_PROVIDER, service);
         List<String> downloadedFiles = Lists.newArrayList();
-        BoxAPIConnection boxClient = new BoxAPIConnection(accessToken.getToken());
+        BoxAPIConnection boxClient = new BoxAPIConnection(refreshedAccessToken.getToken());
         BoxFolder rootFolder = BoxFolder.getRootFolder(boxClient);
 
         visitFolder(rootFolder, boxClient, downloadedFiles);
 
-        return accessToken;
+        return refreshedAccessToken;
     }
 
     private void visitFolder(BoxFolder rootFolder, BoxAPIConnection boxClient, List<String> downloadedFiles) throws IOException {

@@ -1,8 +1,5 @@
 package com.oauth.handler;
 
-import com.github.scribejava.core.extractors.JsonTokenExtractor;
-import com.github.scribejava.core.model.OAuthRequest;
-import com.github.scribejava.core.model.Response;
 import com.github.scribejava.core.model.Token;
 import com.github.scribejava.core.model.Verifier;
 import com.github.scribejava.core.oauth.OAuthService;
@@ -12,6 +9,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.oauth.client.TokenRefresher;
 import com.oauth.provider.OneDriveProvider;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
@@ -32,8 +30,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-
-import static com.github.scribejava.core.model.Verb.POST;
 
 public class OnedriveOAuthHandler implements OAuthHandler {
     private static final String APP_NAME = "onedrive";
@@ -81,7 +77,7 @@ public class OnedriveOAuthHandler implements OAuthHandler {
     @Override
     public Token downloadUserFiles(String rawResponse) throws IOException {
         Token accessToken = ONE_DRIVE_PROVIDER.getAccessTokenExtractor().extract(rawResponse);
-        Token refreshedToken = refreshAccessToken(accessToken);
+        Token refreshedToken = new TokenRefresher().refreshAccessToken(accessToken, ONE_DRIVE_PROVIDER, service);
 
         List<String> downloadedFiles = Lists.newArrayList();
         MultivaluedMap<String, String> queryParams = new MultivaluedMapImpl();
@@ -94,18 +90,6 @@ public class OnedriveOAuthHandler implements OAuthHandler {
         handleFolder(client, queryParams, rootFolderInfo, downloadedFiles);
 
         return refreshedToken;
-    }
-
-    private Token refreshAccessToken(Token accessToken) {
-        JsonObject rawReponseJson = new JsonParser().parse(accessToken.getRawResponse()).getAsJsonObject();
-        String refresh_token = rawReponseJson.get("refresh_token").getAsString();
-        OAuthRequest request = new OAuthRequest(POST, OneDriveProvider.ACCESS_TOKEN_ENDPOINT , service);
-        request.addBodyParameter("grant_type", "refresh_token");
-        request.addBodyParameter("refresh_token", refresh_token);
-        request.addBodyParameter("client_id", service.getConfig().getApiKey());
-        request.addBodyParameter("client_secret", service.getConfig().getApiSecret());
-        Response response = request.send();
-        return new JsonTokenExtractor().extract(response.getBody());
     }
 
     private void handleFolder(Client client, MultivaluedMap<String, String> queryParams, String folderInfo,
