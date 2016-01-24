@@ -1,6 +1,7 @@
 package com.oauth.handler;
 
 import com.box.sdk.BoxAPIConnection;
+import com.box.sdk.BoxFile;
 import com.box.sdk.BoxFolder;
 import com.box.sdk.BoxItem;
 import com.github.scribejava.core.model.Token;
@@ -15,7 +16,11 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
 public class BoxOAuthHandler implements OAuthHandler {
@@ -29,11 +34,39 @@ public class BoxOAuthHandler implements OAuthHandler {
     }
 
     @Override
-    public List<BoxItem.Info> getSampleData(Token accessToken) {
-        BoxAPIConnection api = new BoxAPIConnection(accessToken.getToken());
-        BoxFolder rootFolder = BoxFolder.getRootFolder(api);
+    public List<String> getSampleData(Token accessToken) throws IOException {
+        List<String> downloadedFiles = Lists.newArrayList();
+        BoxAPIConnection boxClient = new BoxAPIConnection(accessToken.getToken());
+        BoxFolder rootFolder = BoxFolder.getRootFolder(boxClient);
 
-        return Lists.newArrayList(rootFolder);
+        visitFolder(rootFolder, boxClient, downloadedFiles);
+
+        return downloadedFiles;
+    }
+
+    private void visitFolder(BoxFolder rootFolder, BoxAPIConnection boxClient, List<String> downloadedFiles) throws IOException {
+        for (BoxItem.Info itemInfo : rootFolder) {
+            if (itemInfo instanceof BoxFile.Info) {
+                BoxFile.Info fileInfo = (BoxFile.Info) itemInfo;
+                downloadFile(boxClient, fileInfo);
+                downloadedFiles.add(fileInfo.getName());
+            } else if (itemInfo instanceof BoxFolder.Info) {
+                BoxFolder.Info folderInfo = (BoxFolder.Info) itemInfo;
+                BoxFolder folder = new BoxFolder(boxClient, folderInfo.getID());
+                visitFolder(folder, boxClient, downloadedFiles);
+            }
+        }
+    }
+
+    private void downloadFile(BoxAPIConnection boxClient, BoxFile.Info fileInfo) throws IOException {
+        String filePath = String.format("target/%s/%s-%s", APP_NAME, fileInfo.getID(), fileInfo.getName());
+        Path path = Paths.get(filePath);
+        Files.createDirectories(path.getParent());
+        Files.deleteIfExists(path);
+        BoxFile file = new BoxFile(boxClient, fileInfo.getID());
+        try (FileOutputStream outputStream = new FileOutputStream(filePath)) {
+            file.download(outputStream);
+        }
     }
 
 
@@ -59,14 +92,8 @@ public class BoxOAuthHandler implements OAuthHandler {
             Verifier verifier = new Verifier(verifierParam);
             Token accessToken = service.getAccessToken(EMPTY_TOKEN, verifier);
 
-            printSampleData(resp, accessToken);
+            resp.getWriter().println(getSampleData(accessToken));
         }
 
-        private void printSampleData(HttpServletResponse resp, Token accessToken) throws IOException {
-            List<BoxItem.Info> itemInfos = getSampleData(accessToken);
-            for (BoxItem.Info itemInfo : itemInfos) {
-                resp.getWriter().println(String.format("[%s] %s\n", itemInfo.getID(), itemInfo.getName()));
-            }
-        }
     }
 }
