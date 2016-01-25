@@ -14,4 +14,8 @@ public class PropertiesHolder {
     public static String getProperty(String key){
         return (String) properties.getProperty(key);
     }
+
+    public static boolean useEvernoteSandbox() {
+        return Boolean.valueOf((String) properties.getProperty("evernote.usesandbox"));
+    }
 }

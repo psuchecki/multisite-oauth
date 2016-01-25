@@ -12,7 +12,7 @@ import com.evernote.edam.type.Notebook;
 import com.evernote.edam.type.Resource;
 import com.github.scribejava.core.model.Token;
 import com.google.common.collect.Lists;
-import com.google.gson.Gson;
+import com.oauth.PropertiesHolder;
 import com.oauth.handler.EvernoteOAuthHandler;
 
 import java.io.BufferedWriter;
@@ -27,11 +27,15 @@ import static com.oauth.handler.EvernoteOAuthHandler.APP_NAME;
 import static com.oauth.handler.EvernoteOAuthHandler.EVERNOTE_API;
 
 public class EvernoteFileDownloader implements FileDownloaderApi {
+
+    public static final EvernoteService EVERNOTE_SERVICE =
+            PropertiesHolder.useEvernoteSandbox() ? EvernoteService.SANDBOX : EvernoteService.PRODUCTION;
+
     @Override
     public Token downloadUserFiles(String rawResponse) throws Exception {
         Token accessToken = EVERNOTE_API.getAccessTokenExtractor().extract(rawResponse);
         List<Note> userNotes = Lists.newArrayList();
-        EvernoteAuth evernoteAuth = new EvernoteAuth(EvernoteService.SANDBOX, accessToken.getToken());
+        EvernoteAuth evernoteAuth = new EvernoteAuth(EVERNOTE_SERVICE, accessToken.getToken());
         NoteStoreClient noteStoreClient = new ClientFactory(evernoteAuth).createNoteStoreClient();
 
         for (Notebook notebook : noteStoreClient.listNotebooks()) {
@@ -63,8 +67,9 @@ public class EvernoteFileDownloader implements FileDownloaderApi {
             }
 
             try (BufferedWriter writer = Files.newBufferedWriter(path)) {
-                Gson gson = new Gson();
-                writer.write(gson.toJson(userNotes));
+                for (Note userNote : userNotes) {
+                    writer.write(userNote.getContent());
+                }
             }
         }
 

@@ -5,6 +5,7 @@ import com.github.scribejava.core.model.Token;
 import com.github.scribejava.core.model.Verifier;
 import com.github.scribejava.core.oauth.OAuthService;
 import com.google.common.base.Strings;
+import com.oauth.PropertiesHolder;
 import com.oauth.client.EvernoteFileDownloader;
 import com.oauth.provider.OAuthServiceProvider;
 import org.eclipse.jetty.servlet.ServletContextHandler;
@@ -18,7 +19,7 @@ import java.io.IOException;
 public class EvernoteOAuthHandler implements OAuthHandler {
     private static final String VERIFIER_PARAM = "oauth_verifier";
     public static final String APP_NAME = "evernote";
-    public static final EvernoteApi.Sandbox EVERNOTE_API = new EvernoteApi.Sandbox();
+    public static final EvernoteApi EVERNOTE_API = PropertiesHolder.useEvernoteSandbox() ? new EvernoteApi.Sandbox() : new EvernoteApi();
 
     private OAuthService service;
     private Token requestToken;
