@@ -11,6 +11,7 @@ import flowctrl.integration.slack.type.FileList;
 import flowctrl.integration.slack.webapi.SlackWebApiClient;
 import org.apache.commons.io.FileUtils;
 
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -21,6 +22,9 @@ import static com.oauth.handler.SlackOAuthHandler.APP_NAME;
 import static com.oauth.handler.SlackOAuthHandler.SLACK_PROVIDER;
 
 public class SlackFileDownloader implements FileDownloaderApi {
+
+    private static final String POST_TYPE = "Post";
+
     @Override
     public Token downloadUserFiles(String rawResponse) throws IOException {
         Token accessToken = SLACK_PROVIDER.getAccessTokenExtractor().extract(rawResponse);
@@ -29,7 +33,7 @@ public class SlackFileDownloader implements FileDownloaderApi {
         SlackWebApiClient client = SlackClientFactory.createWebApiClient(accessToken.getToken());
         FileList fileList = client.getFileList();
         for (File file : fileList.getFiles()) {
-            downloadFile(file, null);
+            downloadFile(file, accessToken.getToken());
             downloadedFiles.add(file.getName());
         }
 
@@ -37,16 +41,24 @@ public class SlackFileDownloader implements FileDownloaderApi {
     }
 
     private void downloadFile(File file, String token) throws IOException {
+        String filePath = String.format("target/%s/%s-%s", APP_NAME, file.getId(), file.getName());
+        Path path = Paths.get(filePath);
+        Files.createDirectories(path.getParent());
+        Files.deleteIfExists(path);
+
+        if (POST_TYPE.equals(file.getPretty_type())) {
+            try (BufferedWriter writer = Files.newBufferedWriter(path)) {
+                writer.write(file.getPreview());
+            }
+            return;
+        }
+
         String url_private = file.getUrl_private_download();
         Client restClient = Client.create();
         WebResource webResource = restClient.resource(url_private);
         java.io.File downloadedFile = webResource.header("Authorization", "Bearer " + token).post(ClientResponse.class)
                 .getEntity(java.io.File.class);
 
-        String filePath = String.format("target/%s/%s-%s", APP_NAME, file.getId(), file.getName());
-        Path path = Paths.get(filePath);
-        Files.createDirectories(path.getParent());
-        Files.deleteIfExists(path);
         FileUtils.moveFile(downloadedFile, new java.io.File(filePath));
     }
 }
